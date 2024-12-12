@@ -34,7 +34,7 @@ pub fn solution_part1() -> u32 {
 pub fn solution_part2() -> i32 {
     let (left, right) = read_input();
     
-    //Note this problem becomes really easy if we convert the right list into a dictonary
+    //Note this problem becomes really easy if we convert the right list into a dictionary
     let mut right_dict = HashMap::new();
     for key in right {
         right_dict.entry(key).and_modify(|counter| *counter += 1).or_insert(1);
