@@ -45,7 +45,7 @@ pub fn solution_part2() -> i32 {
     let mut similarity_score = 0;
     for num in left {
         if let Some(&value) = right_dict.get(&num) {
-            similarity_score = similarity_score + num * value;
+            similarity_score += num * value;
         }
     }
     dbg!(similarity_score);

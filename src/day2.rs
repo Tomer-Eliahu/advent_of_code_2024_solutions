@@ -10,7 +10,6 @@ enum LevelStatus {
 pub struct Report<T: Iterator<Item = i32>> {
     iter: T,
     level_status: LevelStatus,
-    tolerated_bad_level: bool,
 }
 
 impl<T> Report<T>
@@ -21,7 +20,6 @@ where
         Report {
             iter,
             level_status: LevelStatus::NotInitialized,
-            tolerated_bad_level: false,
         }
     }
 
@@ -30,7 +28,7 @@ where
         //We will iterate over the row and calculate the difference between each number and the previous number
         let mut previous_number = self.iter.next().expect("found an empty report (row)");
 
-        while let Some(number) = self.iter.next() {
+        for number in self.iter.by_ref() {
             //checks for integer overflow are on by default for debug and test profiles on Rust
 
             //We now proceed accourding to the level status
