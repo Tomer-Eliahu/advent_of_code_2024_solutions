@@ -1,6 +1,5 @@
-use std::fs;
 use std::collections::HashMap;
-
+use std::fs;
 
 ///Reads the input.txt file and returns a pair of vectors (left, right) where each vector is a list of location IDs
 fn read_input() -> (Vec<i32>, Vec<i32>) {
@@ -33,23 +32,24 @@ pub fn solution_part1() -> u32 {
 
 pub fn solution_part2() -> i32 {
     let (left, right) = read_input();
-    
+
     //Note this problem becomes really easy if we convert the right list into a dictionary
     let mut right_dict = HashMap::new();
     for key in right {
-        right_dict.entry(key).and_modify(|counter| *counter += 1).or_insert(1);
+        right_dict
+            .entry(key)
+            .and_modify(|counter| *counter += 1)
+            .or_insert(1);
     }
 
-    let mut similarity_score= 0;
+    let mut similarity_score = 0;
     for num in left {
-        if let Some(&value) = right_dict.get(&num)
-        {
+        if let Some(&value) = right_dict.get(&num) {
             similarity_score = similarity_score + num * value;
         }
     }
     dbg!(similarity_score);
     similarity_score
-   
 }
 
 #[cfg(test)]
