@@ -135,8 +135,13 @@ where
                         //We need to either remove this number or the previous number or 2 numbers ago.
                         if evaluate_row_as_vector(&full_report, Some(index)) == 1
                             || evaluate_row_as_vector(&full_report, Some(index - 1)) == 1
-                            || evaluate_row_as_vector(&full_report, Some(index - 2)) == 1
                         {
+                            return 1;
+                        } else if index == 2
+                            && evaluate_row_as_vector(&full_report, Some(index - 2)) == 1
+                        {
+                            //Note this is an optimization since we only need to check
+                            //if removing index -2 (changing direction) creates a safe report if the index is 2 (3rd member)
                             return 1;
                         } else {
                             return 0;
@@ -154,8 +159,13 @@ where
                         //We need to either remove this number or the previous number or 2 numbers ago.
                         if evaluate_row_as_vector(&full_report, Some(index)) == 1
                             || evaluate_row_as_vector(&full_report, Some(index - 1)) == 1
-                            || evaluate_row_as_vector(&full_report, Some(index - 2)) == 1
                         {
+                            return 1;
+                        } else if index == 2
+                            && evaluate_row_as_vector(&full_report, Some(index - 2)) == 1
+                        {
+                            //Note this is an optimization since we only need to check
+                            //if removing index -2 (changing direction) creates a safe report if the index is 2
                             return 1;
                         } else {
                             return 0;
