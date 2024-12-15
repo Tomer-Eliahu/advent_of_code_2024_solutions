@@ -48,7 +48,8 @@ impl Update {
                     //since a correct ordering is *guaranteed* to exist, we know this terminates
                     //(after swapping i and j, we know sorting i-j w.r.t to the rule_set terminates
                     //[you can see why by induction] and
-                    //then the first place problems can occur is at index j+1- so slowly this entire process terminates)
+                    //then the first place problems can occur is at index j+1- so slowly this entire process terminates).
+                    //What we do works on the same principle but I think it is the same or more efficent.
 
                     //Note first_index < index
                     self.data.remove(index); // Note self.data[index] = page
