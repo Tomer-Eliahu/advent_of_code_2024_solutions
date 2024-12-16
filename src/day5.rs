@@ -46,10 +46,10 @@ impl Update {
                     //this update violates X|Y. That is this page X comes after some page Y.
                     //We attempt to fix this update by inserting X *before* the index of the first such Y
                     //since a correct ordering is *guaranteed* to exist, we know this terminates
-                    //(after swapping i and j, we know sorting i-j w.r.t to the rule_set terminates
+                    //(after swapping i and j, we know sorting i to j w.r.t to the rule_set terminates
                     //[you can see why by induction] and
                     //then the first place problems can occur is at index j+1- so slowly this entire process terminates).
-                    //What we do works on the same principle but I think it is the same or more efficent.
+                    //What we do works on the same principle but I think it is more efficent.
 
                     //Note first_index < index
                     self.data.remove(index); // Note self.data[index] = page
