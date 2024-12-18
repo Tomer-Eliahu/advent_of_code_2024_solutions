@@ -55,6 +55,8 @@ mod guard {
         guard_location: (usize, usize),
         guard_direction: GuardDirection,
         map: Matrix,
+        //Make GuardPatrol not implement Sync. Needed because of the count_unique_trap_locations method.
+        _marker: std::marker::PhantomData<std::cell::Cell<char>>,
     }
 
     impl GuardPatrol {
@@ -70,6 +72,7 @@ mod guard {
                 guard_location,
                 guard_direction,
                 map,
+                _marker: std::marker::PhantomData,
             }
         }
         ///Advance the guard by 1 step (or turn) if possible,
@@ -268,8 +271,12 @@ mod guard {
             for char in self.map.data.iter().flatten() {
                 //note if char is not '^' or '#' then it is '.'
                 if *char == '.' {
-                    //Logically this method is immutable since the mutations we do on the map
-                    //are temporary
+                    //Logically this method is immutable (in a single threaded context)
+                    //since the mutations we do on the map are temporary.
+                    //Note we enforce this single threaded context by making GuardPatrol not implement Sync.
+                    //Alternatives would be to make this method take a mutable reference or clone the map
+                    //Or wrap all the char's in the map in RefCells or (slightly better) Cells.
+                    //Overall, I think this design is better.
                     let raw_mut = char as *const char as *mut char;
 
                     //place a temporary obstruction at this char's location
