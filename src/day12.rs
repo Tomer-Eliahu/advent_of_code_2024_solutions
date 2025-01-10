@@ -108,11 +108,11 @@ pub mod garden_map {
             //We do this to avoid unsafe code
             let (rows, cols) = (self.row_num, self.col_num);
 
-            let map:&mut Matrix<char> = &mut self;
-            
+            let map: &mut Matrix<char> = &mut self;
+
             //We find the price of each individual region and sum their prices
-            for row_index in 0..rows{
-                for col_index in 0..cols  {
+            for row_index in 0..rows {
+                for col_index in 0..cols {
                     if map.data[row_index][col_index] != '.' {
                         price += price_function(map, (row_index, col_index));
                     }

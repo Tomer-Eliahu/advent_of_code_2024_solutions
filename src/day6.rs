@@ -1,6 +1,7 @@
 use std::fs;
 
 mod guard {
+    use std::cell::RefCell;
     use std::collections::HashSet;
 
     //We use Matrix as helper struct to GuardPatrol
@@ -27,20 +28,6 @@ mod guard {
                 col_num,
             }
         }
-
-        ///Find the location of the guard in a map.
-        ///That is find indices (i,j) such that self.data at (i,j) =='^'
-        fn find_guard(&self) -> Result<(usize, usize), &'static str> {
-            for (row_index, row) in self.data.iter().enumerate() {
-                for (col_index, char) in row.iter().enumerate() {
-                    if *char == '^' {
-                        return Ok((row_index, col_index));
-                    }
-                }
-            }
-
-            Err("Could not find guard")
-        }
     }
 
     #[derive(Hash, PartialEq, Eq, Clone, Copy)]
@@ -54,33 +41,48 @@ mod guard {
     pub struct GuardPatrol {
         guard_location: (usize, usize),
         guard_direction: GuardDirection,
-        map: Matrix,
-        //Make GuardPatrol not implement Sync. Needed because of the count_unique_trap_locations method.
-        _marker: std::marker::PhantomData<std::cell::Cell<char>>,
+        map: RefCell<Matrix>,
+        //Note GuardPatrol does not implement Sync (because of RefCell).
+        //This is needed because of the count_unique_trap_locations method.
     }
 
     impl GuardPatrol {
+        ///Find the location of the guard in a map.
+        ///That is find indices (i,j) such that self.data at (i,j) =='^'
+        fn find_guard(map: &Matrix) -> Result<(usize, usize), &'static str> {
+            for (row_index, row) in map.data.iter().enumerate() {
+                for (col_index, char) in row.iter().enumerate() {
+                    if *char == '^' {
+                        return Ok((row_index, col_index));
+                    }
+                }
+            }
+
+            Err("Could not find guard")
+        }
+
         pub fn new(map: Vec<Vec<char>>) -> GuardPatrol {
-            let map = Matrix::new(map);
+            let map = RefCell::new(Matrix::new(map));
 
             //The guard is initially facing up
             let guard_direction = GuardDirection::Up;
 
-            let guard_location = map.find_guard().unwrap();
+            let guard_location = GuardPatrol::find_guard(&map.borrow()).unwrap();
 
             GuardPatrol {
                 guard_location,
                 guard_direction,
                 map,
-                _marker: std::marker::PhantomData,
             }
         }
+
         ///Advance the guard by 1 step (or turn) if possible,
         ///replacing the current position in the map with an 'X'.
         ///Returns Ok(()) if the guard is still in bounds of the map and Err("out_of_bounds") otherwise.
         fn traverse_with_trace(&mut self) -> Result<(), &'static str> {
             //first replace the current positon of the guard in the map with an X
-            self.map.data[self.guard_location.0][self.guard_location.1] = 'X';
+            let mut map = self.map.borrow_mut();
+            map.data[self.guard_location.0][self.guard_location.1] = 'X';
 
             //Move the guard 1 step (or turn) according to the direction the guard faces
             match self.guard_direction {
@@ -88,7 +90,7 @@ mod guard {
                     //Check if 1 step up is not out of the bounds of the map
                     if self.guard_location.0 > 0 {
                         //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                        if self.map.data[self.guard_location.0 - 1][self.guard_location.1] == '#' {
+                        if map.data[self.guard_location.0 - 1][self.guard_location.1] == '#' {
                             self.guard_direction = GuardDirection::Right;
                         } else {
                             //move the guard 1 step up
@@ -102,9 +104,9 @@ mod guard {
                 }
                 GuardDirection::Down => {
                     //Check if 1 step down is not out of the bounds of the map
-                    if self.guard_location.0 + 1 < self.map.row_num {
+                    if self.guard_location.0 + 1 < map.row_num {
                         //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                        if self.map.data[self.guard_location.0 + 1][self.guard_location.1] == '#' {
+                        if map.data[self.guard_location.0 + 1][self.guard_location.1] == '#' {
                             self.guard_direction = GuardDirection::Left;
                         } else {
                             //move the guard 1 step down
@@ -118,9 +120,9 @@ mod guard {
                 }
                 GuardDirection::Right => {
                     //Check if 1 step right is not out of the bounds of the map
-                    if self.guard_location.1 + 1 < self.map.col_num {
+                    if self.guard_location.1 + 1 < map.col_num {
                         //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                        if self.map.data[self.guard_location.0][self.guard_location.1 + 1] == '#' {
+                        if map.data[self.guard_location.0][self.guard_location.1 + 1] == '#' {
                             self.guard_direction = GuardDirection::Down;
                         } else {
                             //move the guard 1 step right
@@ -137,7 +139,7 @@ mod guard {
                     //Check if 1 step left is not out of the bounds of the map
                     if self.guard_location.1 > 0 {
                         //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                        if self.map.data[self.guard_location.0][self.guard_location.1 - 1] == '#' {
+                        if map.data[self.guard_location.0][self.guard_location.1 - 1] == '#' {
                             self.guard_direction = GuardDirection::Up;
                         } else {
                             //move the guard 1 step left
@@ -163,6 +165,7 @@ mod guard {
 
             //count (and return) the number of X's in the map after the patrol ended (guard went out of bounds)
             self.map
+                .borrow()
                 .data
                 .iter()
                 .flatten()
@@ -174,6 +177,7 @@ mod guard {
         ///self.guard_direction loops foever or ends.
         ///Return 1 if it loops forever and 0 otherwise.
         fn obstructed_patrol(&self) -> usize {
+            let map = self.map.borrow();
             let mut current_location = self.guard_location;
             let mut current_direction = self.guard_direction;
             let mut travel_log = HashSet::new();
@@ -200,7 +204,7 @@ mod guard {
                         //Check if 1 step up is not out of the bounds of the map
                         if current_location.0 > 0 {
                             //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                            if self.map.data[current_location.0 - 1][current_location.1] == '#' {
+                            if map.data[current_location.0 - 1][current_location.1] == '#' {
                                 current_direction = GuardDirection::Right;
                             } else {
                                 //move the guard 1 step up
@@ -213,9 +217,9 @@ mod guard {
                     }
                     GuardDirection::Down => {
                         //Check if 1 step down is not out of the bounds of the map
-                        if current_location.0 + 1 < self.map.row_num {
+                        if current_location.0 + 1 < map.row_num {
                             //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                            if self.map.data[current_location.0 + 1][current_location.1] == '#' {
+                            if map.data[current_location.0 + 1][current_location.1] == '#' {
                                 current_direction = GuardDirection::Left;
                             } else {
                                 //move the guard 1 step down
@@ -228,9 +232,9 @@ mod guard {
                     }
                     GuardDirection::Right => {
                         //Check if 1 step right is not out of the bounds of the map
-                        if current_location.1 + 1 < self.map.col_num {
+                        if current_location.1 + 1 < map.col_num {
                             //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                            if self.map.data[current_location.0][current_location.1 + 1] == '#' {
+                            if map.data[current_location.0][current_location.1 + 1] == '#' {
                                 current_direction = GuardDirection::Down;
                             } else {
                                 //move the guard 1 step right
@@ -246,7 +250,7 @@ mod guard {
                         //Check if 1 step left is not out of the bounds of the map
                         if current_location.1 > 0 {
                             //if there is an obstacle in front of the guard the guard turns 90 degrees right instead
-                            if self.map.data[current_location.0][current_location.1 - 1] == '#' {
+                            if map.data[current_location.0][current_location.1 - 1] == '#' {
                                 current_direction = GuardDirection::Up;
                             } else {
                                 //move the guard 1 step left
@@ -268,27 +272,34 @@ mod guard {
             //and observe if the guard then patrols forever
             let mut counter = 0;
 
-            for char in self.map.data.iter().flatten() {
-                //note if char is not '^' or '#' then it is '.'
-                if *char == '.' {
-                    //Logically this method is immutable (in a single threaded context)
-                    //since the mutations we do on the map are temporary.
-                    //Note we enforce this single threaded context by making GuardPatrol not implement Sync.
-                    //Alternatives would be to make this method take a mutable reference or clone the map
-                    //Or wrap all the char's in the map in RefCells or (slightly better) Cells.
-                    //Overall, I think this design is better.
-                    let raw_mut = char as *const char as *mut char;
+            let (row_num, col_num) = {
+                let map = self.map.borrow();
+                (map.row_num, map.col_num)
+            };
 
-                    //place a temporary obstruction at this char's location
-                    unsafe {
-                        raw_mut.write('#');
-                    }
+            //Note:
+            //Logically this method is immutable and sound (in a single threaded context)
+            //since the mutations we do on the map are temporary.
+            //That is the whole reason why we wrapped the Matrix in a RefCell.
+            //Note GuardPatrol does not implement Sync.
+            //Alternative approaches would be
+            //to make this method take a mutable reference (but this method is logically immutable)
+            //or clone the map (not efficent).
 
-                    counter += self.obstructed_patrol();
+            for row_index in 0..row_num {
+                for col_index in 0..col_num {
+                    if self.map.borrow().data[row_index][col_index] == '.' {
+                        //Note self.obstructed_patrol() borrows the RefCell immutably which is why this
+                        //is a bit clunky
 
-                    //remove temporary obstruction at this char's location
-                    unsafe {
-                        raw_mut.write('.');
+                        //place a temporary obstruction at this char's location (note the mutable borrow
+                        //of the refcell does not live past this line)
+                        self.map.borrow_mut().data[row_index][col_index] = '#';
+
+                        counter += self.obstructed_patrol();
+
+                        //remove temporary obstruction at this char's location
+                        self.map.borrow_mut().data[row_index][col_index] = '.';
                     }
                 }
             }
