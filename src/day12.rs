@@ -105,20 +105,15 @@ pub mod garden_map {
 
             let mut price = 0;
 
-            let map: *mut Map = &mut self as *mut Map;
-            //SAFTEY: This is safe (concurrency wise) because we take ownership of the Map.
-            //We also know Map is not null.
-            //And we know the underlying vectors won't
-            //reallocate as price_region replaces char's with a char (so the vector length never exceeds capacity).
-            //Even if the underlying vectors would have reallocated the Map itself would not have been
-            //moved so it would have fine in that case as well.
-            //We do this so we can call price_function below
-            let map = unsafe { &mut *map };
+            //We do this to avoid unsafe code
+            let (rows, cols) = (self.row_num, self.col_num);
 
+            let map:&mut Matrix<char> = &mut self;
+            
             //We find the price of each individual region and sum their prices
-            for (row_index, row) in self.data.iter().enumerate() {
-                for (col_index, entry) in row.iter().enumerate() {
-                    if *entry != '.' {
+            for row_index in 0..rows{
+                for col_index in 0..cols  {
+                    if map.data[row_index][col_index] != '.' {
                         price += price_function(map, (row_index, col_index));
                     }
                 }
