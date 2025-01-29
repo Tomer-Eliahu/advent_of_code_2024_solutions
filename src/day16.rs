@@ -375,9 +375,6 @@ pub mod deer {
 
                 //Check if we hit the end location
                 if let Some((_final_counter, best_paths)) = visited_nodes.get(&self.end_location) {
-                    //let score = final_counter.turns *1000 +final_counter.steps;
-                    //break score;
-
                     break best_paths.iter().count();
 
                     //Note if taking 1 additional turn means finding more paths to the end location,
@@ -428,25 +425,25 @@ pub mod deer {
                         //Part 2: add location to best paths
                         best_paths.insert(location);
 
-                        let mut best_paths_copy = best_paths.clone();
-
                         if self.map.data[location.0][location.1] == 'E' {
-                            visited_nodes
-                                .entry(location)
-                                .and_modify(|(final_counter, current_best)| {
+                            match visited_nodes.get_mut(&location) {
+                                Some((final_counter, current_best)) => {
                                     match counter.cmp(final_counter) {
                                         Ordering::Less => {
                                             *final_counter = counter;
-                                            *current_best = best_paths_copy;
+                                            *current_best = best_paths;
                                         }
                                         Ordering::Equal => {
                                             //add best_paths to current_best
-                                            current_best.extend(best_paths_copy);
+                                            current_best.extend(best_paths);
                                         }
                                         _ => (),
                                     }
-                                })
-                                .or_insert((counter, best_paths));
+                                }
+                                None => {
+                                    visited_nodes.insert(location, (counter, best_paths));
+                                }
+                            };
                             return;
                         } else if self.map.data[location.0 + 1][location.1] != '#'
                             || self.map.data[location.0 - 1][location.1] != '#'
@@ -464,10 +461,12 @@ pub mod deer {
                                 Some((old_counter, old_best_paths)) => {
                                     match new_counter.cmp(old_counter) {
                                         Ordering::Less => {
+                                            let best_paths_copy = best_paths.clone();
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
                                         }
                                         Ordering::Equal => {
+                                            let mut best_paths_copy = best_paths.clone();
                                             best_paths_copy.extend(old_best_paths);
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
@@ -485,6 +484,7 @@ pub mod deer {
                                     // next_queue.insert((location, DeerDirection::South));
                                 }
                                 None => {
+                                    let best_paths_copy = best_paths.clone();
                                     visited_nodes.insert(location, (new_counter, best_paths_copy));
 
                                     //it is ok to enqueue both North and South even if the deer
@@ -505,25 +505,25 @@ pub mod deer {
                         //Part 2: add location to best paths
                         best_paths.insert(location);
 
-                        let mut best_paths_copy = best_paths.clone();
-
                         if self.map.data[location.0][location.1] == 'E' {
-                            visited_nodes
-                                .entry(location)
-                                .and_modify(|(final_counter, current_best)| {
+                            match visited_nodes.get_mut(&location) {
+                                Some((final_counter, current_best)) => {
                                     match counter.cmp(final_counter) {
                                         Ordering::Less => {
                                             *final_counter = counter;
-                                            *current_best = best_paths_copy;
+                                            *current_best = best_paths;
                                         }
                                         Ordering::Equal => {
                                             //add best_paths to current_best
-                                            current_best.extend(best_paths_copy);
+                                            current_best.extend(best_paths);
                                         }
                                         _ => (),
                                     }
-                                })
-                                .or_insert((counter, best_paths));
+                                }
+                                None => {
+                                    visited_nodes.insert(location, (counter, best_paths));
+                                }
+                            };
                             return;
                         } else if self.map.data[location.0 + 1][location.1] != '#'
                             || self.map.data[location.0 - 1][location.1] != '#'
@@ -541,10 +541,12 @@ pub mod deer {
                                 Some((old_counter, old_best_paths)) => {
                                     match new_counter.cmp(old_counter) {
                                         Ordering::Less => {
+                                            let best_paths_copy = best_paths.clone();
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
                                         }
                                         Ordering::Equal => {
+                                            let mut best_paths_copy = best_paths.clone();
                                             best_paths_copy.extend(old_best_paths);
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
@@ -553,6 +555,7 @@ pub mod deer {
                                     }
                                 }
                                 None => {
+                                    let best_paths_copy = best_paths.clone();
                                     visited_nodes.insert(location, (new_counter, best_paths_copy));
 
                                     next_queue.insert((location, DeerDirection::North));
@@ -571,25 +574,25 @@ pub mod deer {
                         //Part 2: add location to best paths
                         best_paths.insert(location);
 
-                        let mut best_paths_copy = best_paths.clone();
-
                         if self.map.data[location.0][location.1] == 'E' {
-                            visited_nodes
-                                .entry(location)
-                                .and_modify(|(final_counter, current_best)| {
+                            match visited_nodes.get_mut(&location) {
+                                Some((final_counter, current_best)) => {
                                     match counter.cmp(final_counter) {
                                         Ordering::Less => {
                                             *final_counter = counter;
-                                            *current_best = best_paths_copy;
+                                            *current_best = best_paths;
                                         }
                                         Ordering::Equal => {
                                             //add best_paths to current_best
-                                            current_best.extend(best_paths_copy);
+                                            current_best.extend(best_paths);
                                         }
                                         _ => (),
                                     }
-                                })
-                                .or_insert((counter, best_paths));
+                                }
+                                None => {
+                                    visited_nodes.insert(location, (counter, best_paths));
+                                }
+                            };
                             return;
                         } else if self.map.data[location.0][location.1 + 1] != '#'
                             || self.map.data[location.0][location.1 - 1] != '#'
@@ -607,10 +610,12 @@ pub mod deer {
                                 Some((old_counter, old_best_paths)) => {
                                     match new_counter.cmp(old_counter) {
                                         Ordering::Less => {
+                                            let best_paths_copy = best_paths.clone();
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
                                         }
                                         Ordering::Equal => {
+                                            let mut best_paths_copy = best_paths.clone();
                                             best_paths_copy.extend(old_best_paths);
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
@@ -619,6 +624,7 @@ pub mod deer {
                                     }
                                 }
                                 None => {
+                                    let best_paths_copy = best_paths.clone();
                                     visited_nodes.insert(location, (new_counter, best_paths_copy));
 
                                     next_queue.insert((location, DeerDirection::East));
@@ -636,25 +642,25 @@ pub mod deer {
                         //Part 2: add location to best paths
                         best_paths.insert(location);
 
-                        let mut best_paths_copy = best_paths.clone();
-
                         if self.map.data[location.0][location.1] == 'E' {
-                            visited_nodes
-                                .entry(location)
-                                .and_modify(|(final_counter, current_best)| {
+                            match visited_nodes.get_mut(&location) {
+                                Some((final_counter, current_best)) => {
                                     match counter.cmp(final_counter) {
                                         Ordering::Less => {
                                             *final_counter = counter;
-                                            *current_best = best_paths_copy;
+                                            *current_best = best_paths;
                                         }
                                         Ordering::Equal => {
                                             //add best_paths to current_best
-                                            current_best.extend(best_paths_copy);
+                                            current_best.extend(best_paths);
                                         }
                                         _ => (),
                                     }
-                                })
-                                .or_insert((counter, best_paths));
+                                }
+                                None => {
+                                    visited_nodes.insert(location, (counter, best_paths));
+                                }
+                            };
                             return;
                         } else if self.map.data[location.0][location.1 + 1] != '#'
                             || self.map.data[location.0][location.1 - 1] != '#'
@@ -672,10 +678,12 @@ pub mod deer {
                                 Some((old_counter, old_best_paths)) => {
                                     match new_counter.cmp(old_counter) {
                                         Ordering::Less => {
+                                            let best_paths_copy = best_paths.clone();
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
                                         }
                                         Ordering::Equal => {
+                                            let mut best_paths_copy = best_paths.clone();
                                             best_paths_copy.extend(old_best_paths);
                                             visited_nodes
                                                 .insert(location, (new_counter, best_paths_copy));
@@ -684,6 +692,7 @@ pub mod deer {
                                     }
                                 }
                                 None => {
+                                    let best_paths_copy = best_paths.clone();
                                     visited_nodes.insert(location, (new_counter, best_paths_copy));
 
                                     next_queue.insert((location, DeerDirection::East));
