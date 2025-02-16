@@ -125,7 +125,11 @@ pub mod computer {
                         //meaning there is a difference of 1 between search start and end
                         let bad_byte_start = self.bytes[search_start];
                         let bad_byte_end = self.bytes[search_end];
-                        self.bytes_fall(search_start + 1); //search start is an index so we add 1.
+
+                        //We know that everything up untill search_start (non-inclusive)
+                        //has already been marked on the map at this point
+                        self.map.insert(bad_byte_start);
+
                         if self.solve_maze().is_none() {
                             return bad_byte_start;
                         } else {
@@ -136,16 +140,30 @@ pub mod computer {
                     }
                 }
 
-                let mut test_maze = Maze::new(self.bytes.clone(), self.size);
-                test_maze.bytes_fall(mid); //get rid of all bytes with index in [0, mid)
+                //Because we are taking ownership of Self, we can optimize this function.
+                //instead of doing something like
 
-                match test_maze.solve_maze() {
+                //let mut test_maze = Maze::new(self.bytes.clone(), self.size);
+                //test_maze.bytes_fall(mid); //get rid of all bytes with index in [0, mid)
+
+                //We can do the following
+                let mark_on_map = &self.bytes[search_start..mid]; // mark [start, mid)
+                self.map.extend(mark_on_map);
+
+                match self.solve_maze() {
                     Some(_) => {
                         //This means the bad byte must be have index in [mid, end]
                         search_start = mid;
                     }
                     None => {
                         //This means the bad byte must be have index in [start, mid-1]
+
+                        //So we want to unmark [star, mid-1] from the map
+                        //(note this relies on the fact we know bytes has no duplicates)
+                        for value in mark_on_map {
+                            self.map.remove(value);
+                        }
+
                         search_end = mid - 1;
                     }
                 }
