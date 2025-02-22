@@ -78,7 +78,8 @@ use keypad::CodeHandler;
 // --> input to Robot_C (what we type in)
 
 //Then we also want a final function to compute the complexity per code:
-//This is the len of a shortest possible input to Robot_C * (the input to numeric keypad stripped of A's and remove leading zeros)
+//This is the len of a 
+//shortest possible input to Robot_C * (the input to numeric keypad stripped of A's and remove leading zeros)
 
 //The answer to part 1 is the sum of the complexity score of all codes.
 
@@ -563,7 +564,8 @@ pub mod keypad {
                 }
 
                 (std::cmp::Ordering::Greater, std::cmp::Ordering::Greater) => {
-                    //traveling from 'A' to 'v' or from '^' to '<' it is cheaper to go down then left (also from 'A' to '<')
+                    //traveling from 'A' to 'v' or from '^' to '<' it is cheaper 
+                    //to go down then left (also from 'A' to '<')
 
                     //We want to make sure we don't go left down left!
                     if *target_pos == (0, 0) {
@@ -685,13 +687,13 @@ pub mod keypad {
             (third.len()) * code_as_number
         }
 
+
+        //Part 2
+
         //The brute force apporach takes too long. What if instead we simply obsereved
-        //how many '<' 'v' '>' '^' 'A' Robot_ generates from each possible input ('<', 'v', '>', '^', 'A')
+        //how many '<' 'v' '>' '^' 'A' Robot_ generates from each possible move.
         //Then to calculate the next robot input length would simply be a matter of
         //getting the counts from the inputs to robot _ and then doing some multiplications.
-
-        //We need to introduce a Robot_D and then we can tranlate moves of Robot B on Robot A's controls
-        //into sequences to type into Robot_D. Then we keep track of each key count.
 
         //Look at the following
 
@@ -740,29 +742,9 @@ pub mod keypad {
         //>>^A
         //>^>A
 
-        //Look At the set of all of these and see What they translate to in terms of counts for the input to
+        //Look At the set of all of these and see what they translate to in terms of counts for the input to
         //Robot D
 
-        //We need to introduce a Robot_D and then we can tranlate moves of Robot B on Robot A's controls
-        //into sequences to type into Robot_D. Then we keep track of each key count.
-
-        //The sequence Robot C executes to make Robot B go (Direction and then press the button)
-
-        // UP: <A>A
-
-        // DOWN: v<A>^A
-
-        // LEFT: v<<A>>^A
-
-        // RIGHT: vA^A
-
-        //Press: A
-
-        //UP AND THEN LEFT:
-
-        //LEFT THEN UP:
-
-        //
 
         ///Takes the code to input into the *numeric keypad*. Returns the code complexity.
         ///
@@ -771,7 +753,7 @@ pub mod keypad {
         ///
         ///
         /// At part two instead of 2 ControlsRobot<T> instances (i.e. Robot B and C in part 1)
-        /// We have 25 instances
+        /// We have 25 instances (26 Robots overall)
         pub fn calc_complexity_part2(&mut self, code: &str) -> usize {
             let code_as_number = code
                 .replace('A', "")
@@ -786,14 +768,14 @@ pub mod keypad {
             let mut robot_b: ControlsRobot<A> = ControlsRobot::new();
 
             //The key is (mov, pattern) and the value is the number of this pattern this mov generates
-            //So as doing this mov v<<A spits out v<A<AA>>^A.
+            //So as doing this mov v<<A spits out v<A<AA>>^A (the input the next Robot needs to execute v<<A).
             //It spits out one v<A one <A one A one >>^A and 0 all other patterns
             let mut dict: HashMap<(&str, &str), usize> = HashMap::with_capacity(40);
 
             //We need to keep track of how many of each pattern we have in each iteration
             let mut counts: HashMap<&str, usize> = HashMap::with_capacity(20);
 
-            //We know each of these movements generates some combination of the themselves.
+            //Key Idea: We know each of these movements generates some combination of the themselves.
             //So we can just keep counts.
 
             //We know after executing each of these, that Robot C is pointing back at A on Robot B's controls
@@ -830,12 +812,12 @@ pub mod keypad {
                         }
                     }
                     if !movements.contains(&pattern) {
-                        panic!("Missing pattern")
+                        panic!("Missing pattern");
                     }
                 }
             }
 
-            //So now dict is intialized. I also verified manually it is correct
+            //So now dict is initialized. I also verified manually it is correct
 
             let mut first = vec![];
             for target in code.chars() {
@@ -849,18 +831,18 @@ pub mod keypad {
 
             let second: String = second.into_iter().collect();
 
-            //Intialize counts
+            //Initialize counts
             for pattern in second.split_inclusive('A') {
                 counts.entry(pattern).and_modify(|e| *e += 1).or_insert(1);
             }
 
             Self::progres_by_robot(&mut counts, &dict, &movements);
-            //I tested it and if we did return (Self::calc_len(counts)) * code_as_number here then we would get the same answer as part 1
+            //I tested it and if we did return (Self::calc_len(counts)) * code_as_number here 
+            //then we would get the same answer as part 1
 
             //When there were 3 robots, we used 3 function calls.
             //Now there are 26 robots, so use 26 function calls in total. we already used 3
             for _robot_num in 4..=26 {
-                // println!("counts was: \n\n\n {:#?}" , counts);
                 Self::progres_by_robot(&mut counts, &dict, &movements);
             }
 
@@ -879,9 +861,9 @@ pub mod keypad {
 
             for (mov, &mut old_num) in counts.iter_mut() {
                 for ((mov_inner, pattern), &to_add) in dict {
-                    //Notice this procedure yields the new counts as old_num of mov is used to generate these new patterns
+                    //Notice this procedure yields the new counts as old_num of mov is used up
+                    // to generate these new patterns
                     if mov == mov_inner {
-                        //We need to go to new_counts with key pattern and add 'to_add'
                         new_counts
                             .entry(pattern)
                             .and_modify(|e| *e += old_num * to_add)
