@@ -78,7 +78,7 @@ use keypad::CodeHandler;
 // --> input to Robot_C (what we type in)
 
 //Then we also want a final function to compute the complexity per code:
-//This is the len of a 
+//This is the len of a
 //shortest possible input to Robot_C * (the input to numeric keypad stripped of A's and remove leading zeros)
 
 //The answer to part 1 is the sum of the complexity score of all codes.
@@ -564,7 +564,7 @@ pub mod keypad {
                 }
 
                 (std::cmp::Ordering::Greater, std::cmp::Ordering::Greater) => {
-                    //traveling from 'A' to 'v' or from '^' to '<' it is cheaper 
+                    //traveling from 'A' to 'v' or from '^' to '<' it is cheaper
                     //to go down then left (also from 'A' to '<')
 
                     //We want to make sure we don't go left down left!
@@ -687,7 +687,6 @@ pub mod keypad {
             (third.len()) * code_as_number
         }
 
-
         //Part 2
 
         //The brute force apporach takes too long. What if instead we simply obsereved
@@ -744,7 +743,6 @@ pub mod keypad {
 
         //Look At the set of all of these and see what they translate to in terms of counts for the input to
         //Robot D
-
 
         ///Takes the code to input into the *numeric keypad*. Returns the code complexity.
         ///
@@ -837,7 +835,7 @@ pub mod keypad {
             }
 
             Self::progres_by_robot(&mut counts, &dict, &movements);
-            //I tested it and if we did return (Self::calc_len(counts)) * code_as_number here 
+            //I tested it and if we did return (Self::calc_len(counts)) * code_as_number here
             //then we would get the same answer as part 1
 
             //When there were 3 robots, we used 3 function calls.
