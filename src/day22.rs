@@ -1,0 +1,196 @@
+use std::fs;
+
+use secret::{Buyer, SeqToPrice, gen_2000};
+
+pub mod secret {
+    use std::collections::{HashMap, VecDeque};
+
+    use itertools::Itertools;
+
+    ///The price (sum of number of bananas) we would get from *all* buyers so far for this sequence
+    pub struct SeqToPrice {
+        seq_price: HashMap<(i8, i8, i8, i8), usize>,
+    }
+
+    impl SeqToPrice {
+        pub fn new() -> SeqToPrice {
+            Self {
+                seq_price: HashMap::new(),
+            }
+        }
+
+        ///Updates SeqToPrice by collecting a Buyer's information
+        pub fn collect_buyer(&mut self, buyer: Buyer) {
+            for (seq, price) in buyer.seq_price {
+                self.seq_price
+                    .entry(seq)
+                    .and_modify(|e| *e += price)
+                    .or_insert(price);
+            }
+        }
+
+        ///Returns the sequence for which we would get the highest price collectively from all the buyers
+        /// as well as that maximum price (number of bananas)
+        pub fn get_optimal_seq(&self) -> ((i8, i8, i8, i8), usize) {
+            let (&optimal_seq, &max_price) = self
+                .seq_price
+                .iter()
+                .max_by_key(|&(_seq, &price)| price)
+                .expect("seq_price should not be empty");
+
+            (optimal_seq, max_price)
+        }
+    }
+
+    pub struct Buyer {
+        current_secret: usize,
+        current_price: usize,
+
+        ///The last 4 price changes
+        sequence: VecDeque<i8>,
+
+        ///The key is a sequence of 4 price changes. The value is the number of bananas (the current price)
+        /// obtained when this sequence is observed for the first time for this buyer.
+        seq_price: HashMap<(i8, i8, i8, i8), usize>,
+    }
+
+    impl Buyer {
+        ///Initializes the Buyer
+        pub fn new(mut secret: usize) -> Buyer {
+            let mut current_price = secret % 10;
+            let mut old_price = current_price;
+
+            let mut sequence = VecDeque::new();
+
+            for _ in 0..4 {
+                secret = gen_next(secret);
+                current_price = secret % 10;
+                //Note price as i8 is fine as price is a single digit number (0-9)
+                sequence.push_back((current_price as i8) - (old_price as i8));
+                old_price = current_price;
+            }
+
+            //We now have a sequence of the last 4 price changes.
+            let mut seq_price: HashMap<(i8, i8, i8, i8), usize> = HashMap::new();
+
+            seq_price.insert(
+                sequence.iter().copied().collect_tuple().unwrap(),
+                current_price,
+            );
+
+            Buyer {
+                current_secret: secret,
+                current_price,
+                sequence,
+                seq_price,
+            }
+        }
+
+        ///Updates the buyer by generating the next secret and updating the price, sequence,
+        /// and potentially seq_price accordingly
+        fn update(&mut self) {
+            self.current_secret = gen_next(self.current_secret);
+            let new_price = self.current_secret % 10;
+
+            //Note price as i8 is fine as price is a single digit number (0-9)
+            let price_change = (new_price as i8) - (self.current_price as i8);
+            self.current_price = new_price;
+
+            self.sequence.pop_front();
+            self.sequence.push_back(price_change);
+
+            //Now we need to check if this is the first time we have encountered this sequence of prices.
+            //If it is, then we update the HashMap
+            let seq: (i8, i8, i8, i8) = self.sequence.iter().copied().collect_tuple().unwrap();
+            self.seq_price.entry(seq).or_insert(self.current_price);
+        }
+
+        ///Make the buyer generate secrets untill the 2000th secret is generated.
+        /// Note the when initilizing the Buyer via new: 4 secrets were generated.
+        /// This function also updates the Buyer accordingly.
+        pub fn run_to_2000(&mut self) {
+            for _ in 4..2000 {
+                self.update();
+            }
+        }
+    }
+
+    //Note 2.pow(24) is this number so we only care about the first 24 bits.
+    //The algorithm in gen_next is entirely bit shifts and bitwise XORs so it is fast.
+    const MOD: usize = 16777216;
+
+    ///Takes a secret number as an input and generates the next secret number
+    fn gen_next(mut secret: usize) -> usize {
+        //Here are the 3 steps
+        secret = (secret ^ (secret * 64)) % MOD;
+        secret = (secret ^ (secret / 32)) % MOD;
+        secret = (secret ^ (secret * 2048)) % MOD;
+
+        secret
+    }
+
+    ///Takes an inital secret number and generates the 2000th secret number that would be created
+    pub fn gen_2000(mut secret: usize) -> usize {
+        for _ in 0..2000 {
+            secret = gen_next(secret);
+        }
+
+        secret
+    }
+}
+
+///Returns the sum of the 2000th secret number generated by each buyer
+fn solution_part1(file_path: &str) -> usize {
+    fs::read_to_string(file_path)
+        .expect("failed to open file")
+        .lines()
+        .map(|raw_num| {
+            let secret = raw_num.parse::<usize>().expect("should be a number");
+            gen_2000(secret)
+        })
+        .sum()
+}
+
+///Returns the max bananas you can get by telling the Monkey to sell when it first observes
+/// the optimal sequence of 4 price changes
+fn solution_part2(file_path: &str) -> usize {
+    let seq_total_price = fs::read_to_string(file_path)
+        .expect("failed to open file")
+        .lines()
+        .map(|raw_num| {
+            let secret = raw_num.parse::<usize>().expect("should be a number");
+            let mut buyer = Buyer::new(secret);
+            buyer.run_to_2000();
+            buyer
+        })
+        .fold(SeqToPrice::new(), |mut acc: SeqToPrice, buyer: Buyer| {
+            acc.collect_buyer(buyer);
+            acc
+        });
+
+    seq_total_price.get_optimal_seq().1
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn answer() {
+        dbg!(solution_part1("puzzle_inputs/day22.txt"));
+        dbg!(solution_part2("puzzle_inputs/day22.txt"));
+    }
+
+    #[test]
+    fn example_part1() {
+        let result = solution_part1("puzzle_inputs/day22example.txt");
+        assert_eq!(result, 37327623);
+    }
+
+    #[test]
+    fn example_part2() {
+        let result = solution_part2("puzzle_inputs/day22example_part2.txt");
+        assert_eq!(result, 23);
+    }
+}
