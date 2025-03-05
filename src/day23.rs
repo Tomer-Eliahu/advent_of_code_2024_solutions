@@ -1,0 +1,352 @@
+use std::fs;
+
+use graph::Graph;
+
+//part 1 solution notes: Look at the graph of all connections. We want to find all possible subgraphs
+//that form a complete subgraph with 3 vertices (all sets of 3 computers such that each computer is connected
+//to the other 2 computers in the set).
+
+//If we can consturct a HashMap where the key is the name of the vertex and
+//the value is a list of all vertices connected to that vertex (use a HashSet for the list).
+
+//Then for finding a such a subgraph with vertex ta we look at all the connections to ta,
+//Say the first connection is kh. The list of vertices that form such a subgraph (with vertices ta and kh) is
+//the set interesection of the list of connections to ta with the list of connections to kh.
+//This is why we use a HashSet as the value for the HashMap: it makes computing the intersection more efficent.
+
+pub mod graph {
+    use std::{collections::{HashMap, HashSet}, mem};
+
+    use itertools::Itertools;
+
+    pub struct Graph {
+        network: &'static str,
+        //Note the lifetime of the string slices are static as they are slices of a String's heap data
+        //Note that this is *not* actually a self-referential struct (so no pinning needed).
+        connections: HashMap<&'static str, HashSet<&'static str>>,
+    }
+
+    impl Graph {
+        pub fn build(network: String) -> Graph {
+
+
+            let slice: Box<str> = network.into_boxed_str();
+
+            //Note: We use Box::leak to get a &'static str.
+            //We also make sure to avoid leaking memory later on by impl Drop for Graph.
+            //(just dropping the returned reference from Box::leak will cause a memory leak).
+            //Note we turn &mut str (what Box::leak returns) into &str.
+            let static_network: &'static str = Box::<str>::leak(slice) as &'static str;
+
+            let mut connections = HashMap::new();
+
+            for raw_connection in static_network.lines() {
+                let Some((a, b)) = raw_connection.split_once("-") else {
+                    panic!("connection should be of the form foo-bar")
+                };
+
+                //insert b into the list of connections for a
+                //and a into the list of connections of b
+                connections
+                    .entry(a)
+                    .and_modify(|e: &mut HashSet<&str>| {
+                        e.insert(b);
+                    })
+                    .or_insert_with(|| {
+                        let mut set = HashSet::new();
+                        set.insert(b);
+                        set
+                    });
+
+                connections
+                    .entry(b)
+                    .and_modify(|e: &mut HashSet<&str>| {
+                        e.insert(a);
+                    })
+                    .or_insert_with(|| {
+                        let mut set = HashSet::new();
+                        set.insert(a);
+                        set
+                    });
+            }
+
+            Graph {
+                network: static_network,
+                connections,
+            }
+        }
+
+        ///Find all possible subgraphs that form a complete subgraph with 3 vertices
+        /// where at least one vertex starts with the letter 't'.
+        /// That is: find all sets of 3 computers such that each computer is connected
+        ///to the other 2 computers in the set and at least one computer has a name that starts with 't'.
+        pub fn find_subgraphs(&self) -> HashSet<[&'static str; 3]> {
+            let mut subgraphs: HashSet<[&'static str; 3]> = HashSet::new();
+
+            for (&vertex_a, a_connect) in self.connections.iter() {
+                for &vertex_b in a_connect {
+                    let b_connect = self.connections.get(vertex_b)
+                    .expect("vertex b is connected to vertex a, so it should also be a key in self.connections");
+
+                    //The set intersection of a_connect and b_connect gives us all possible
+                    //vertex_c options such that verticies a, b, c, form a complete subgraph.
+
+                    for &vertex_c in a_connect.intersection(b_connect) {
+                        if vertex_a.starts_with("t")
+                            || vertex_b.starts_with("t")
+                            || vertex_c.starts_with("t")
+                        {
+                            //We have to sort the set to avoid double counting subgraphs in the HashSet
+                            //(we consider [a,b,c] to be the same as [c,a,b] )
+                            let mut set = [vertex_a, vertex_b, vertex_c];
+                            set.sort_unstable();
+
+                            subgraphs.insert(set);
+                        }
+                    }
+                }
+            }
+
+            subgraphs
+        }
+
+        ///Returns the password to the LAN party: returns the members of the largest complete subgraph of the network
+        /// sorted alphabetically.
+        /// 
+        /// **Note:** We know for this specific puzzle that the largest complete subgraph will have a computer
+        /// that starts with the letter 't'. Solving this problem in general (without using this fact), takes too long
+        /// to compute.
+        pub fn find_largest_subgraph(&self) -> String {
+
+
+            let mut candidates: Vec<HashSet<&'static str>> = Vec::new();
+
+            for (&vertex, vertex_connect) in 
+            self.connections.iter().filter(|(vertex, _)| {vertex.starts_with("t")}) 
+            {
+                //**Note:** We know for this specific puzzle that the largest complete subgraph will have a computer
+                // that starts with the letter 't'.
+
+                //potential is a complete subgraph candidate
+                let mut potential: HashSet<&'static str> = vertex_connect.clone();
+                potential.insert(vertex);
+
+                candidates.push(potential);
+      
+                
+            }
+
+           
+            println!("There are {} candidates", candidates.len());
+            
+
+            let largest = self.get_largest(candidates);
+
+            largest.into_iter().sorted().join(",")
+
+        }
+
+        ///Takes a a list of candidates that may contain within themselves the largest complete subgraph of this Graph.
+        /// Returns a HashSet of the elements in the largest complete subgraph
+        fn get_largest(&self, candidates: Vec<HashSet<&'static str>>) -> HashSet<&'static str> {
+
+            candidates.into_iter()
+            .fold(HashSet::new(), |mut acc, candidate| {
+                if let Some(potential) = self.get_largest_within_candidate(candidate)
+                {
+                    if potential.len() > acc.len() {
+                        acc = potential;
+                    }
+                }
+                acc
+            })
+        }
+
+        ///Finds and returns (one of) the largest complete subgraph within a candidate
+        fn get_largest_within_candidate(&self, candidate: HashSet<&'static str>) -> Option<HashSet<&'static str>> {
+
+            //We do this so we only sort the candidate once
+            let candidate = candidate.into_iter().sorted().collect_vec();
+
+            //We know from part 1 that there are subgraphs of size 3 so the largest subgraph must have size >= 3. 
+            for num_vertices  in (3..=candidate.len()).rev() {
+
+                //Iterate over all possible combinations of num_vertices elements of candidate
+                let combinations = candidate.iter()
+                .copied().combinations(num_vertices);
+                
+                
+                //Note this intialization value for bad index is fine as each combination is num_vertices long
+                let (mut bad_idx, mut bad_comb) = (num_vertices +10, Vec::new());
+
+                'comb: for comb in combinations {
+
+                    //We take advantage of combinations being sorted
+                    //to avoid recalculating long intersection chains repeatdedly.
+                    if bad_idx != num_vertices + 10 &&
+                    comb.starts_with(&bad_comb[..=bad_idx])
+                    {
+                        continue 'comb;
+                    }
+
+                    //This is a num_vertices length vector (so it is not empty)
+                    let mut intersect = self.connections.get(comb[0]).unwrap().clone();
+                    
+                    //We also need to insert this vertex into the intersection
+                    intersect.insert(comb[0]);
+
+                    for (index, &vertex) in comb.iter().enumerate().skip(1) {
+                        let mut other = self.connections.get(vertex).unwrap().clone();
+                        other.insert(vertex);
+
+                        intersect = intersect.intersection(&other).copied().collect();
+
+                        if intersect.len() < num_vertices {
+                            //update bad_index and bad_value: there is no use looking
+                            //at combinations where this combination is a prefix of those combinations
+                            (bad_idx, bad_comb) = (index, comb);
+                            continue 'comb;
+                        }
+                    }
+
+                    //If the interesection has length num_vertices, then we have found a complete subgraph.
+                    if intersect.len() == num_vertices {
+
+                        return Some(intersect);
+
+                    }
+                }
+
+            }
+
+            None
+        }
+
+
+    }
+
+    impl Drop for Graph {
+        fn drop(&mut self) {
+            //To avoid leaking memory (as a result of using Box::leak in Graph::build)
+            //we must do the following.
+
+            //drop the old connections
+            mem::drop(mem::take(&mut self.connections));
+
+            //SAFETY: We are reconstructing a valid Box from self.network.
+            //Note that self.network was obtained directly from Box::leak and that we even made it into
+            //an immutable string slice (whereas Box::Leak returned a mutable string slice).
+            let network: *const str = &raw const *mem::take(&mut self.network);
+            unsafe {
+                mem::drop(Box::<str>::from_raw(network.cast_mut()));
+            };
+        }
+    }
+
+    //Alternative way to implement Graph (see explanation why this is bad below):
+
+    // struct GraphInner<'a> {
+    //     network_slice: &'a str,
+    //     connections: HashMap<&'a str, HashSet<&'a str>>,
+    // }
+
+    // impl <'a> GraphInner<'a> {
+    //     pub fn build(network: &'a str) -> GraphInner<'a>  {
+
+    //         let mut connections =  HashMap::new();
+
+    //         for raw_connection in network.lines() {
+
+    //             let Some((a, b)) = raw_connection.split_once("-")
+    //             else { panic!("connection should be of the form foo-bar") };
+
+    //             //insert b into the list of connections for a
+    //             //and a into the list of connections of b
+    //             connections.entry(a).and_modify(|e:&mut HashSet<&str> | {e.insert(b);})
+    //             .or_insert_with(|| {
+    //                 let mut set = HashSet::new();
+    //                 set.insert(b);
+    //                 set
+    //             });
+
+    //             connections.entry(b).and_modify(|e:&mut HashSet<&str> | {e.insert(a);})
+    //             .or_insert_with(|| {
+    //                 let mut set = HashSet::new();
+    //                 set.insert(a);
+    //                 set
+    //             });
+
+    //         }
+
+    //         GraphInner {network_slice: network, connections}
+
+    //     }
+
+    // }
+
+    //Note this way means the Graph created cannot outlive the String (or &str)
+    //from which it was made. This would mean we could not construct a Graph in one function
+    //and move it by value to another function!
+
+    //We can observe this:
+
+    // fn fails() -> (String, &String) {
+    //     let a = String::from("Hello");
+
+    //     let mut thing = (a, &String::from("init"));
+    //     thing.1 = &thing.0;
+
+    //     thing
+    // }
+
+    // fn also_fails() ->(String, &String) {
+    //     let a = String::from("Hello");
+
+    //     (a, &a)
+    // }
+}
+
+///Returns the number of sets of three inter-connected computers where
+/// at least one computer has a name that starts with t
+fn solution_part1(file_path: &str) -> usize {
+    let data = fs::read_to_string(file_path).expect("failed to open file");
+
+    let graph = Graph::build(data);
+
+    graph.find_subgraphs().len()
+}
+
+///Returns the password to the LAN party: returns the members of the largest complete subgraph of the network
+/// sorted alphabetically.
+fn solution_part2(file_path: &str) -> String {
+
+    let data = fs::read_to_string(file_path).expect("failed to open file");
+
+    let graph = Graph::build(data);
+
+    graph.find_largest_subgraph()
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn answer() {
+        dbg!(solution_part1("puzzle_inputs/day23.txt"));
+        dbg!(solution_part2("puzzle_inputs/day23.txt"));
+    }
+
+    #[test]
+    fn example_part1() {
+        let result = solution_part1("puzzle_inputs/day23example.txt");
+        assert_eq!(result, 7);
+    }
+
+    #[test]
+    fn example_part2() {
+        let result = solution_part2("puzzle_inputs/day23example.txt");
+        assert_eq!(result, "co,de,ka,ta");
+    }
+}
