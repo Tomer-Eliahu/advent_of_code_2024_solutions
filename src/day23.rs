@@ -126,8 +126,8 @@ pub mod graph {
         /// sorted alphabetically.
         ///
         /// **Note:** We know for this specific puzzle that the largest complete subgraph will have a computer
-        /// that starts with the letter 't'. Solving this problem in general (without using this fact), takes too long
-        /// to compute.
+        /// that starts with the letter 't'. We can also solve this problem in general (without using this fact),
+        /// by commenting out the .filter line below.
         pub fn find_largest_subgraph(&self) -> String {
             let mut candidates: Vec<HashSet<&'static str>> = Vec::new();
 
