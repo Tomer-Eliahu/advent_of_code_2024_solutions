@@ -92,10 +92,14 @@ pub mod graph {
         ///
         /// That is: find all sets of 3 computers such that each computer is connected
         ///to the other 2 computers in the set and at least one computer has a name that starts with 't'.
-        pub fn find_subgraphs(&self) -> HashSet<[&'static str; 3]> {
-            let mut subgraphs: HashSet<[&'static str; 3]> = HashSet::new();
+        pub fn find_subgraphs(&'_ self) -> HashSet<[&'_ str; 3]> {
+            let mut subgraphs: HashSet<[&str; 3]> = HashSet::new();
 
-            for (&vertex_a, a_connect) in self.connections.iter() {
+            for (&vertex_a, a_connect) in self
+                .connections
+                .iter()
+                .filter(|(vertex_a, _)| vertex_a.starts_with("t"))
+            {
                 for &vertex_b in a_connect {
                     let b_connect = self.connections.get(vertex_b)
                     .expect("vertex b is connected to vertex a, so it should also be a key in self.connections");
@@ -104,17 +108,12 @@ pub mod graph {
                     //vertex_c options such that verticies a, b, c, form a complete subgraph.
 
                     for &vertex_c in a_connect.intersection(b_connect) {
-                        if vertex_a.starts_with("t")
-                            || vertex_b.starts_with("t")
-                            || vertex_c.starts_with("t")
-                        {
-                            //We have to sort the set to avoid double counting subgraphs in the HashSet
-                            //(we consider [a,b,c] to be the same as [c,a,b] )
-                            let mut set = [vertex_a, vertex_b, vertex_c];
-                            set.sort_unstable();
+                        //We have to sort the set to avoid double counting subgraphs in the HashSet
+                        //(we consider [a,b,c] to be the same as [c,a,b] )
+                        let mut set = [vertex_a, vertex_b, vertex_c];
+                        set.sort_unstable();
 
-                            subgraphs.insert(set);
-                        }
+                        subgraphs.insert(set);
                     }
                 }
             }
@@ -159,30 +158,38 @@ pub mod graph {
         ///Takes a a list of candidates that may contain within themselves the largest complete subgraph of this Graph.
         /// Returns a HashSet of the elements in the largest complete subgraph
         fn get_largest(&self, candidates: Vec<HashSet<&'static str>>) -> HashSet<&'static str> {
+            //We know from part 1 that there are subgraphs of size 3 so the largest subgraph among
+            //all the candidates must have size >= 3.
+            let mut largest_found = 2;
+
             candidates
                 .into_iter()
                 .fold(HashSet::new(), |mut acc, candidate| {
-                    if let Some(potential) = self.get_largest_within_candidate(candidate) {
-                        if potential.len() > acc.len() {
-                            acc = potential;
-                        }
+                    if let Some(potential) =
+                        self.get_largest_within_candidate(candidate, &mut largest_found)
+                    {
+                        //Note if Some is returned, we know potential.len() > acc.len()
+                        acc = potential;
                     }
                     acc
                 })
         }
 
         ///Finds and returns (one of) the largest complete subgraph within a candidate.
-        /// Note that if the size of the largest complete subgraph is less than 3, then None is returned.
+        /// Note that if the size of the largest complete subgraph is <= size, then None is returned.
         fn get_largest_within_candidate(
             &self,
             candidate: HashSet<&'static str>,
+            size: &mut usize,
         ) -> Option<HashSet<&'static str>> {
             //We do this so we only sort the candidate once
             let candidate = candidate.into_iter().sorted().collect_vec();
 
-            //We know from part 1 that there are subgraphs of size 3 so the largest subgraph among
-            //all the candidates must have size >= 3.
-            for num_vertices in (3..=candidate.len()).rev() {
+            //We have already found a subgraph that is 'size' big among the candidates, so it is only worth
+            //looking for potentially larger subgraphs
+            let min = *size + 1;
+
+            for num_vertices in (min..=candidate.len()).rev() {
                 //Iterate over all possible combinations of num_vertices elements of candidate
                 let combinations = candidate.iter().copied().combinations(num_vertices);
 
@@ -218,6 +225,9 @@ pub mod graph {
 
                     //If the interesection has length num_vertices, then we have found a complete subgraph.
                     if intersect.len() == num_vertices {
+                        //Note num_vertices >= min > size. So we update the size of the largest complete subgraph
+                        //found among the candidates
+                        *size = num_vertices;
                         return Some(intersect);
                     }
                 }
