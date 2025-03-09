@@ -38,7 +38,7 @@ pub mod computer {
 
         ///Returns the lowest positive initial value for register A that
         /// causes the program to output a copy of itself.
-        /// Unfortunetly, the solution involves observing what our particular puzzle input program
+        /// Unfortunately, the solution involves observing what our particular puzzle input program
         /// does per iteration (the brute force approach takes too long).
         ///
         ///
@@ -55,10 +55,10 @@ pub mod computer {
         ///
         /// In particular we note that the A_new is just A_old shifted right 3 times.
         /// We also note that 3 bits of A output a digit. This means A must be 48 bits (our program length is 16; 16*3 =48).
-        /// Note that to determine the last output digit we only care about the last 3 bits of A.
-        /// To determine the last 2 output digits we only care about the last 6 bits of A.
+        /// Note that to determine the last output digit we only care about the leftmost 3 bits of A.
+        /// To determine the last 2 output digits we only care about the leftmost 6 bits of A.
         ///
-        /// That means we can fill A by increaments of 3 bits from left to right.
+        /// That means we can fill A by increments of 3 bits from left to right.
         pub fn find_copy(self) -> usize {
             //Note the last digit we output (i.e. 0) is at the top of the stack
             let mut output_stack: Vec<usize> = self.program.into_iter().collect();
